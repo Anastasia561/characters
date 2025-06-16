@@ -1,5 +1,4 @@
-﻿using characters.Data;
-using characters.Exceptions;
+﻿using characters.Exceptions;
 using characters.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,6 +26,25 @@ public class CharactersController : ControllerBase
         catch (NotFoundException e)
         {
             return NotFound(e.Message);
+        }
+    }
+
+    [HttpPost("{characterId}/backpacks")]
+    public async Task<IActionResult> AddCharacterItemsAsync(int characterId, List<int> itemIds,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _dbService.AddCharacterItemsAsync(itemIds, characterId, cancellationToken);
+            return Ok();
+        }
+        catch (NotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (ConflictException e)
+        {
+            return Conflict(e.Message);
         }
     }
 }

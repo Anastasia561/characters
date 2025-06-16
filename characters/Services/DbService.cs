@@ -1,6 +1,7 @@
 ﻿using characters.Data;
 using characters.Dtos;
 using characters.Exceptions;
+using characters.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace characters.Services;
@@ -40,5 +41,55 @@ public class DbService : IDbService
             throw new NotFoundException($"Character with id {characterId} not found");
 
         return character;
+    }
+
+    public async Task AddCharacterItemsAsync(List<int> itemIds, int characterId, CancellationToken cancellationToken)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var character = await _context.Characters.FirstOrDefaultAsync(c => c.Id == characterId, cancellationToken);
+            if (character == null)
+                throw new NotFoundException($"Character with id {characterId} not found");
+
+            foreach (var id in itemIds)
+            {
+                var item = await _context.Items.FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
+                if (item == null)
+                    throw new NotFoundException($"Item with id {id} not found");
+
+                if (character.MaxWeight < character.CurrentWeight + item.Weight)
+                    throw new ConflictException(
+                        $"Character with id {characterId} does not have enough weight to add the item");
+
+                var backpack =
+                    await _context.Backpacks.FirstOrDefaultAsync(b => b.CharacterId == characterId && b.ItemId == id,
+                        cancellationToken);
+                if (backpack == null)
+                {
+                    _context.Backpacks.Add(new Backpack()
+                    {
+                        CharacterId = characterId,
+                        ItemId = id,
+                        Amount = 1
+                    });
+                }
+                else
+                {
+                    backpack.Amount = backpack.Amount + 1;
+                }
+
+                character.CurrentWeight += item.Weight;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (Exception e)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 }

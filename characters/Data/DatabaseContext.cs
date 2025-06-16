@@ -8,6 +8,8 @@ public class DatabaseContext : DbContext
     public DbSet<Character> Characters { get; set; }
     public DbSet<Item> Items { get; set; }
     public DbSet<Title> Titles { get; set; }
+    public DbSet<Backpack> Backpacks { get; set; }
+    public DbSet<CharacterTitle> CharacterTitles { get; set; }
 
     protected DatabaseContext()
     {
